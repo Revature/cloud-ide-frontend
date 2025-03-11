@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
   RunnerIcon,
+  CloudIcon,
+  ImageIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -16,12 +18,12 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    icon: <RunnerIcon />,
+    icon: <CloudIcon />,
     name: "Cloud Connectors",
     path: "/cloud-connectors",
   },
   {
-    icon: <RunnerIcon />,
+    icon: <ImageIcon />,
     name: "Images",
     path: "/images",
   },
@@ -64,14 +66,14 @@ const AppSidebar: React.FC = () => {
             <>
               <Image
                 className="dark:hidden"
-                src="/images/logo/logo.svg"
+                src="/images/brand/revature-logo.svg"
                 alt="Logo"
                 width={150}
                 height={40}
               />
               <Image
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="/images/brand/revature-logo.svg"
                 alt="Logo"
                 width={150}
                 height={40}
@@ -79,7 +81,7 @@ const AppSidebar: React.FC = () => {
             </>
           ) : (
             <Image
-              src="/images/logo/logo-icon.svg"
+              src="/images/brand/revature-logo.svg"
               alt="Logo"
               width={32}
               height={32}
