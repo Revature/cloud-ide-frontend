@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import React from "react";
-import CloudConnectorsTable from "@/components/tables/BasicTables/CloudConnectorsTable";
+import ImagesTable from "@/components/tables/BasicTables/ImagesTable";
 import Breadcrumb from "@/components/ui/breadcrumb/Breadcrumb";
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default function CloudConnectors() {
       </div>
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12">
-          <CloudConnectorsTable />
+          <ImagesTable />
         </div>
       </div>
     </div>
