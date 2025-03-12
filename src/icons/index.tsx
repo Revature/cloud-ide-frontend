@@ -7,6 +7,8 @@ import GlobeIcon from "./globe.svg";
 import ChevronDownIcon from "./chevron-down.svg";
 import EyeOpenIcon from "./eye-open.svg";
 import EyeClosedIcon from "./eye-closed.svg";
+import ChevronRightIcon from "./chevron-right.svg";
+import ChevronLeftIcon from "./chevron-left.svg";
 
 export {
   RunnerIcon,
@@ -18,4 +20,6 @@ export {
   ChevronDownIcon,
   EyeOpenIcon,
   EyeClosedIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
 };

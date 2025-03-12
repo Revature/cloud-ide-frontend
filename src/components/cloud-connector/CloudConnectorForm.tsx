@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
-import Form from "../Form";
-import Input from "../input/InputField";
+import Form from "../form/Form";
+import Input from "../form/input/InputField";
 import {
   CloudIcon,
   GlobeIcon,
@@ -9,12 +9,12 @@ import {
   LockIcon,
   EyeOpenIcon,
   EyeClosedIcon,
-} from "../../../icons";
-import Toggle from "../input/Toggle";
-import Label from "../Label";
-import Button from "../../ui/button/Button";
-import Select from "../Select";
-import { useCloudConnectors } from "../../../context/CloudConnectorsContext";
+} from "../../icons";
+import Toggle from "../form/input/Toggle";
+import Label from "../form/Label";
+import Button from "../ui/button/Button";
+import Select from "../form/Select";
+import { useCloudConnectors } from "../../context/CloudConnectorsContext";
 
 type CloudProvider = 'aws' | 'azure' | 'gcp';
 

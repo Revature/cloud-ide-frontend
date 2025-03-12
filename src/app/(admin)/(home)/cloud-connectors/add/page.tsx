@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import CloudConnectorForm from "@/components/form/cloud-connector/CloudConnectorForm";
+import CloudConnectorForm from "@/components/cloud-connector/CloudConnectorForm";
 import Button from "@/components/ui/button/Button";
 import { NewCloudConnector } from "@/context/CloudConnectorsContext";
 
