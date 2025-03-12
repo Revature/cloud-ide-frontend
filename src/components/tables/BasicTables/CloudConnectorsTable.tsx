@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Badge from "../../ui/badge/Badge";
 import {
   Table,
   TableBody,
@@ -10,72 +9,47 @@ import {
 } from "../../ui/table";
 import Button from "../../ui/button/Button";
 import Image from "next/image";
-
-// Type definition for the cloud connector data
-interface CloudConnector {
-  image: string;
-  name: string;
-  added: string;
-  region: string;
-  type: string;
-  status: "Active" | "Inactive" | "Failed";
-}
-
-const cloudConnectorData: CloudConnector[] = [
-  {
-    image: "/images/brand/aws-logo.svg", 
-    name: "AWS", 
-    added: "Jan 15, 2025", 
-    region: "us-west-2",
-    type: "EC2",
-    status: "Active",
-  },
-  {
-    image: "/images/brand/azure-logo.svg",
-    name: "Azure", 
-    added: "Feb 02, 2025", 
-    region: "West US 2",
-    type: "VM",
-    status: "Active",
-  },
-  {
-    image: "/images/brand/gcp-logo.svg",
-    name: "GCP", 
-    added: "Jan 28, 2025", 
-    region: "us-central1",
-    type: "Compute Engine",
-    status: "Active",
-  },
-  {
-    image: "/images/brand/digitalocean-logo.svg",
-    name: "DigitalOcean", 
-    added: "Mar 05, 2025", 
-    region: "NYC1",
-    type: "Droplet",
-    status: "Inactive",
-  }
-];
+import { useRouter } from "next/navigation";
+import Toggle from "@/components/form/input/Toggle";
+import { useCloudConnectors } from "@/context/CloudConnectorsContext";
 
 export default function CloudConnectorsTable() {
+  // Get connectors from context
+  const { connectors, updateConnectorStatus } = useCloudConnectors();
+  
   // State for current page and items per page
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 5; // Set the number of items per page
+
+  // Router for navigation
+  const router = useRouter();
 
   // Calculate the indexes for the current page
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
   // Slice the data for the current page
-  const currentItems = cloudConnectorData.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = connectors.slice(indexOfFirstItem, indexOfLastItem);
 
   // Calculate total pages
-  const totalPages = Math.ceil(cloudConnectorData.length / itemsPerPage);
+  const totalPages = Math.ceil(connectors.length / itemsPerPage);
 
   // Handlers for page navigation
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
+  };
+
+  // Navigate to the add connector page
+  const navigateToAddConnector = () => {
+    router.push("/cloud-connectors/add");
+  };
+  
+  // Handle toggle state change
+  const handleToggleChange = (index: number, enabled: boolean) => {
+    const actualIndex = indexOfFirstItem + index;
+    updateConnectorStatus(actualIndex, enabled);
   };
   
   return (
@@ -113,7 +87,7 @@ export default function CloudConnectorsTable() {
               />
             </div>
           </form>
-          <Button size="sm" variant="primary">Add Connector</Button>
+          <Button size="sm" variant="primary" onClick={navigateToAddConnector}>Add Connector</Button>
         </div>
       </div>
 
@@ -148,15 +122,9 @@ export default function CloudConnectorsTable() {
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400"
+                  className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400 min-w-[150px] w-[150px]"
                 >
                   Status
-                </TableCell>
-                <TableCell
-                  isHeader
-                  className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400"
-                >
-                  Actions
                 </TableCell>
               </TableRow>
             </TableHeader>
@@ -189,25 +157,12 @@ export default function CloudConnectorsTable() {
                   <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400">
                     {item.type}
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400">
-                    <Badge
-                      size="sm"
-                      color={
-                        item.status === "Active"
-                          ? "success"
-                          : item.status === "Inactive"
-                          ? "warning"
-                          : "error"
-                      }
-                    >
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400">
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">Edit</Button>
-                      <Button size="sm" variant="outline">Delete</Button>
-                    </div>
+                  <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400 min-w-[150px] w-[150px]">
+                    <Toggle
+                      enabled={item.active}
+                      setEnabled={(enabled) => handleToggleChange(index, enabled)}
+                      label={item.active ? "Active" : "Inactive"}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -290,6 +245,8 @@ export default function CloudConnectorsTable() {
           </Button>
         </div>
       </div>
+
+      {/* Modal removed - now using page navigation */}
     </div>
   );
 }
