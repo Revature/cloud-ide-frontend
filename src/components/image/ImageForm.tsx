@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useImages } from "@/context/ImagesContext";
 import Form from "@/components/form/Form";
 import Input from "@/components/form/input/InputField";
-import Select from "@/components/form/Select";
-import Button from "@/components/ui/button/Button";
 import Label from "@/components/form/Label";
 import Toggle from "@/components/form/input/Toggle";
+import Button from "@/components/ui/button/Button";
+import Select from "@/components/form/Select";
 
 // Define VM type options
 type ImageProvider = 'aws' | 'azure' | 'gcp';
@@ -132,10 +132,11 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
     setSelectedType("standard");
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // Create a manual form submission handler
+  const manualSubmit = () => {
+    console.log("Manual form submission");
     
-    // Create new image object
+    // Create new image object using state values
     const newImage: ImageFormData = {
       name: name,
       osVersion: selectedOsVersion,
@@ -151,6 +152,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
       }
     };
     
+    console.log("Submitting new image:", newImage);
+    
     // Add the image using context
     addImage(newImage);
     
@@ -163,8 +166,16 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
     router.push('/images');
   };
 
+  // This will be called by the Form component
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // The default prevention is handled by the Form component
+    console.log("Form onSubmit called");
+    manualSubmit();
+    console.log(e);
+  };
+
   return (
-    <>
+    <div className="container mx-auto">
       <Form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {/* Basic Information Section */}
@@ -181,10 +192,11 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="name">Image Name</Label>
             <Input
+              id="name"
               name="name"
               placeholder="e.g., Ubuntu Developer"
               defaultValue={name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
             />
           </div>
 
@@ -192,8 +204,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="provider">Cloud Provider</Label>
             <Select
-              defaultValue={selectedProvider}
               options={cloudProviders}
+              defaultValue={selectedProvider}
               onChange={handleProviderChange}
             />
           </div>
@@ -202,8 +214,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="osVersion">OS Version</Label>
             <Select
-              defaultValue={selectedOsVersion}
               options={osVersions[selectedProvider]}
+              defaultValue={selectedOsVersion}
               onChange={(value) => setSelectedOsVersion(value)}
             />
           </div>
@@ -212,8 +224,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="type">Image Type</Label>
             <Select
-              defaultValue={selectedType}
               options={imageTypes[selectedProvider]}
+              defaultValue={selectedType}
               onChange={(value) => setSelectedType(value as ImageType)}
             />
           </div>
@@ -222,12 +234,12 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="poolSize">Pool Size</Label>
             <Input
+              id="poolSize"
               name="poolSize"
               type="number"
               placeholder="Number of pre-provisioned VMs"
               defaultValue={poolSize.toString()}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                setPoolSize(parseInt(e.target.value) || 0)}
+              onChange={(e) => setPoolSize(parseInt(e.target.value) || 0)}
             />
             <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Number of ready VMs to maintain in the pool
@@ -252,7 +264,7 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
               id="description"
               name="description"
               placeholder="Description of the image and its purpose"
-              value={description}
+              defaultValue={description}
               onChange={(e) => setDescription(e.target.value)}
               className="dark:bg-dark-900 h-24 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 px-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
             />
@@ -272,8 +284,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="cpu">CPU Cores</Label>
             <Select
-              defaultValue={selectedCpu}
               options={cpuOptions}
+              defaultValue={selectedCpu}
               onChange={(value) => setSelectedCpu(value)}
             />
           </div>
@@ -282,8 +294,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="memory">Memory (GB)</Label>
             <Select
-              defaultValue={selectedMemory}
               options={memoryOptions}
+              defaultValue={selectedMemory}
               onChange={(value) => setSelectedMemory(value)}
             />
           </div>
@@ -292,8 +304,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <div className="col-span-full md:col-span-1">
             <Label htmlFor="storage">Storage (GB)</Label>
             <Select
-              defaultValue={selectedStorage}
               options={storageOptions}
+              defaultValue={selectedStorage}
               onChange={(value) => setSelectedStorage(value)}
             />
           </div>
@@ -304,12 +316,16 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <Button size="sm" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button size="sm" variant="primary">
+          {/* Use a regular button that manually triggers the form submission */}
+          <Button 
+            size="sm" 
+            variant="primary" 
+          >
             Create Image
           </Button>
         </div>
       </Form>
-    </>
+    </div>
   );
 };
 

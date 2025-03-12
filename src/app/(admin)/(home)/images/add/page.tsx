@@ -10,7 +10,7 @@ export default function AddImagePage() {
   
   const breadcrumbItems = [
     { label: "Home", href: "/" },
-    { label: "VM Images", href: "/images" },
+    { label: "Images", href: "/images" },
     { label: "Add Image" }
   ];
   

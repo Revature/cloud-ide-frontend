@@ -16,7 +16,7 @@ export default function ViewImagePage() {
     
   const breadcrumbItems = [
     { label: "Home", href: "/" },
-    { label: "VM Images", href: "/images" },
+    { label: "Images", href: "/images" },
     { label: imageName }
   ];
   

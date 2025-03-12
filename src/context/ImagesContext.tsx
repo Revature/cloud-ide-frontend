@@ -1,23 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-// Define the shape of the data being submitted in forms
-export interface ImageFormData {
-  name: string;
-  osVersion: string;
-  provider: string;
-  type: string;
-  poolSize: number;
-  active: boolean;
-  description: string;
-  configuration: {
-    cpu: number;
-    memory: number;
-    storage: number;
-  };
-}
-
-// Define the interface for VM Image
+// Define the interface for Image
 export interface VMImage {
   icon: string;
   name: string;
@@ -44,6 +28,7 @@ export interface NewVMImage {
   provider: string;
   type: string;
   poolSize: number;
+  active: boolean;
   description: string;
   configuration: {
     cpu: number;
@@ -55,7 +40,7 @@ export interface NewVMImage {
 // Initial data with sample images
 const initialImages: VMImage[] = [
   {
-    icon: "/icons/ubuntu.svg",
+    icon: "/images/brand/ubuntu.png",
     name: "Ubuntu Developer",
     osVersion: "Ubuntu 22.04 LTS",
     provider: "AWS",
@@ -72,7 +57,7 @@ const initialImages: VMImage[] = [
     }
   },
   {
-    icon: "/icons/jupyter.svg",
+    icon: "/images/brand/jupyter.svg",
     name: "Data Science Workbench",
     osVersion: "Ubuntu 22.04 LTS",
     provider: "AWS",
@@ -89,7 +74,7 @@ const initialImages: VMImage[] = [
     }
   },
   {
-    icon: "/icons/windows.svg",
+    icon: "/images/brand/windows.svg",
     name: "Windows Development",
     osVersion: "Windows Server 2022",
     provider: "Azure",
@@ -106,14 +91,14 @@ const initialImages: VMImage[] = [
     }
   },
   {
-    icon: "/icons/builder.svg",
+    icon: "/images/brand/builder.svg",
     name: "Image Builder",
     osVersion: "Ubuntu 20.04 LTS",
     provider: "AWS",
     type: "image_builder",
     poolSize: 1,
     active: true,
-    description: "Environment for building and customizing other VM images",
+    description: "Environment for building and customizing other images",
     createdAt: "Jan 10, 2025",
     updatedAt: "Feb 10, 2025",
     configuration: {
@@ -123,7 +108,7 @@ const initialImages: VMImage[] = [
     }
   },
   {
-    icon: "/icons/golang.svg",
+    icon: "/images/brand/golang.svg",
     name: "Go Development",
     osVersion: "Alpine Linux 3.18",
     provider: "GCP",
@@ -140,7 +125,7 @@ const initialImages: VMImage[] = [
     }
   },
   {
-    icon: "/icons/devops.svg",
+    icon: "/images/brand/devops.png",
     name: "DevOps Toolchain",
     osVersion: "Ubuntu 22.04 LTS",
     provider: "AWS",
@@ -184,22 +169,17 @@ export const ImagesProvider: React.FC<ImagesProviderProps> = ({ children }) => {
   const [images, setImages] = useState<VMImage[]>(initialImages);
 
   const addImage = (image: NewVMImage) => {
-    // Map provider names to their icon paths
-    const providerIcons: Record<string, string> = {
-      aws: "/icons/aws.svg",
-      azure: "/icons/azure.svg",
-      gcp: "/icons/gcp.svg"
-    };
+    console.log("Before adding image, current images:", images.length);
 
     // Determine icon based on OS
     const getIcon = (osVersion: string, type: string) => {
-      if (osVersion.toLowerCase().includes('ubuntu')) return "/icons/ubuntu.svg";
-      if (osVersion.toLowerCase().includes('alpine')) return "/icons/alpine.svg";
-      if (osVersion.toLowerCase().includes('windows')) return "/icons/windows.svg";
-      if (type === 'data_science') return "/icons/jupyter.svg";
-      if (type === 'image_builder') return "/icons/builder.svg";
-      if (type === 'devops') return "/icons/devops.svg";
-      return "/icons/vm.svg"; // default
+      if (osVersion.toLowerCase().includes('ubuntu')) return "/images/brand/ubuntu.png";
+      if (osVersion.toLowerCase().includes('alpine')) return "/images/brand/alpine.png";
+      if (osVersion.toLowerCase().includes('windows')) return "/images/brand/windows.svg";
+      if (type === 'data_science') return "/images/brand/jupyter.svg";
+      if (type === 'image_builder') return "/images/brand/builder.svg";
+      if (type === 'devops') return "/images/brand/devops.png";
+      return "/images/brand/vm.svg"; // default
     };
 
     const newImage: VMImage = {
@@ -209,7 +189,7 @@ export const ImagesProvider: React.FC<ImagesProviderProps> = ({ children }) => {
       provider: image.provider,
       type: image.type,
       poolSize: image.poolSize,
-      active: true,
+      active: image.active,
       description: image.description,
       createdAt: new Date().toLocaleDateString('en-US', {
         year: 'numeric',
@@ -228,7 +208,15 @@ export const ImagesProvider: React.FC<ImagesProviderProps> = ({ children }) => {
       }
     };
 
-    setImages(prev => [...prev, newImage]);
+    console.log("New image to be added:", newImage);
+    setImages(prev => {
+      console.log("Inside setImages callback, previous state:", prev.length);
+      const newState = [...prev, newImage];
+      console.log("New state after adding image:", newState.length);
+      return newState;
+    });
+    
+    console.log("After setImages call");
   };
 
   const updateImageStatus = (index: number, active: boolean) => {
@@ -288,3 +276,5 @@ export const ImagesProvider: React.FC<ImagesProviderProps> = ({ children }) => {
 
 // Custom hook for using the context
 export const useImages = () => useContext(ImagesContext);
+
+export default ImagesContext;

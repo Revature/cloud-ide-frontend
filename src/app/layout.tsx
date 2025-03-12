@@ -6,6 +6,7 @@ import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { CloudConnectorsProvider } from "@/context/CloudConnectorsContext";
+import { ImagesProvider } from "@/context/ImagesContext";
 
 const outfit = Outfit({
   variable: "--font-outfit-sans",
@@ -22,7 +23,11 @@ export default function RootLayout({
       <body className={`${outfit.variable} dark:bg-gray-900`}>
         <ThemeProvider>
           <SidebarProvider>
-            <CloudConnectorsProvider>{children}</CloudConnectorsProvider>
+            <CloudConnectorsProvider>
+              <ImagesProvider>
+                {children}
+              </ImagesProvider>
+            </CloudConnectorsProvider>
           </SidebarProvider>
         </ThemeProvider>
       </body>
