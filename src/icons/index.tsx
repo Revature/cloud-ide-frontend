@@ -5,6 +5,8 @@ import LockIcon from "./lock.svg";
 import KeyIcon from "./key.svg";
 import GlobeIcon from "./globe.svg";
 import ChevronDownIcon from "./chevron-down.svg";
+import EyeOpenIcon from "./eye-open.svg";
+import EyeClosedIcon from "./eye-closed.svg";
 
 export {
   RunnerIcon,
@@ -14,4 +16,6 @@ export {
   KeyIcon,
   GlobeIcon,
   ChevronDownIcon,
+  EyeOpenIcon,
+  EyeClosedIcon,
 };

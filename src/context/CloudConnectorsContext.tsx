@@ -9,17 +9,33 @@ export interface CloudConnector {
   region: string;
   type: string;
   active: boolean;
+  // Add credential fields
+  accessKey: string;
+  secretKey: string;
 }
 
-// Initial data
+// Define a separate interface for new connectors
+export interface NewCloudConnector {
+  provider: string;
+  name?: string;
+  region: string;
+  type: string;
+  status?: boolean;
+  accessKey: string;
+  secretKey: string;
+}
+
+// Initial data with dummy credentials
 const initialConnectors: CloudConnector[] = [
   {
     image: "/images/brand/aws-logo.svg", 
-    name: "AWS", 
+    name: "AWS",
     added: "Jan 15, 2025", 
     region: "us-west-2",
     type: "EC2",
     active: true,
+    accessKey: "AKIAIOSFODNN7EXAMPLE",
+    secretKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
   },
   {
     image: "/images/brand/azure-logo.svg",
@@ -28,6 +44,8 @@ const initialConnectors: CloudConnector[] = [
     region: "West US 2",
     type: "VM",
     active: true,
+    accessKey: "azurekey098765432104",
+    secretKey: "xyzABCdefGHIjklMNOpqrSTUvwXYZ0123456789",
   },
   {
     image: "/images/brand/gcp-logo.svg",
@@ -36,6 +54,8 @@ const initialConnectors: CloudConnector[] = [
     region: "us-central1",
     type: "Compute Engine",
     active: true,
+    accessKey: "gcp_service_account_123",
+    secretKey: "gcpauthkey_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345",
   },
   {
     image: "/images/brand/digitalocean-logo.svg",
@@ -44,20 +64,24 @@ const initialConnectors: CloudConnector[] = [
     region: "NYC1",
     type: "Droplet",
     active: false,
+    accessKey: "dopad_v1_1234567890abcdef",
+    secretKey: "do_secret_key_01234567890abcdefghijklmnopqrstuvwxyz",
   }
 ];
 
 // Create context with default values
 interface CloudConnectorsContextType {
   connectors: CloudConnector[];
-  addConnector: (connector: Partial<CloudConnector>) => void;
+  addConnector: (connector: NewCloudConnector) => void;
   updateConnectorStatus: (index: number, active: boolean) => void;
+  updateConnector: (index: number, updatedData: Partial<CloudConnector>) => void;
 }
 
 const CloudConnectorsContext = createContext<CloudConnectorsContextType>({
   connectors: initialConnectors,
   addConnector: () => {},
   updateConnectorStatus: () => {},
+  updateConnector: () => {},
 });
 
 // Provider component
@@ -68,7 +92,7 @@ interface CloudConnectorsProviderProps {
 export const CloudConnectorsProvider: React.FC<CloudConnectorsProviderProps> = ({ children }) => {
   const [connectors, setConnectors] = useState<CloudConnector[]>(initialConnectors);
 
-  const addConnector = (connector: Partial<CloudConnector>) => {
+  const addConnector = (connector: NewCloudConnector) => {
     // Map provider names to their image paths
     const providerImages: Record<string, string> = {
       aws: "/images/brand/aws-logo.svg",
@@ -84,8 +108,8 @@ export const CloudConnectorsProvider: React.FC<CloudConnectorsProviderProps> = (
     };
 
     const newConnector: CloudConnector = {
-      image: providerImages[connector.provider as string] || "/images/brand/cloud-generic.svg",
-      name: providerNames[connector.provider as string] || connector.provider as string,
+      image: providerImages[connector.provider as string] || "/images/brand/default-logo.svg",
+      name: connector.name || providerNames[connector.provider as string] || connector.provider as string,
       added: new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -94,6 +118,8 @@ export const CloudConnectorsProvider: React.FC<CloudConnectorsProviderProps> = (
       region: connector.region as string,
       type: connector.type as string,
       active: connector.status || false,
+      accessKey: connector.accessKey,
+      secretKey: connector.secretKey,
     };
 
     setConnectors(prev => [...prev, newConnector]);
@@ -108,9 +134,25 @@ export const CloudConnectorsProvider: React.FC<CloudConnectorsProviderProps> = (
       return updated;
     });
   };
+  
+  // Add new function to update multiple properties of a connector
+  const updateConnector = (index: number, updatedData: Partial<CloudConnector>) => {
+    setConnectors(prev => {
+      const updated = [...prev];
+      if (updated[index]) {
+        updated[index] = { ...updated[index], ...updatedData };
+      }
+      return updated;
+    });
+  };
 
   return (
-    <CloudConnectorsContext.Provider value={{ connectors, addConnector, updateConnectorStatus }}>
+    <CloudConnectorsContext.Provider value={{ 
+      connectors, 
+      addConnector, 
+      updateConnectorStatus,
+      updateConnector
+    }}>
       {children}
     </CloudConnectorsContext.Provider>
   );

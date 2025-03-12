@@ -1,13 +1,13 @@
 "use client";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import CloudConnectorForm from "@/components/form/example-form/CloudConnectorForm";
+import CloudConnectorForm from "@/components/form/cloud-connector/CloudConnectorForm";
 import Button from "@/components/ui/button/Button";
+import { NewCloudConnector } from "@/context/CloudConnectorsContext";
 
 export default function AddCloudConnectorPage() {
   const router = useRouter();
   
-  const handleSubmit = (connectorData) => {
+  const handleSubmit = (connectorData: NewCloudConnector) => {
     console.log("Submitting connector data:", connectorData);
     // Here you would handle the API call to add the connector
     

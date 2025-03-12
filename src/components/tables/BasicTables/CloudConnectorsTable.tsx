@@ -46,6 +46,12 @@ export default function CloudConnectorsTable() {
     router.push("/cloud-connectors/add");
   };
   
+  // Navigate to edit connector page
+  const navigateToEditConnector = (index: number) => {
+    const actualIndex = indexOfFirstItem + index;
+    router.push(`/cloud-connectors/edit/${actualIndex}`);
+  };
+  
   // Handle toggle state change
   const handleToggleChange = (index: number, enabled: boolean) => {
     const actualIndex = indexOfFirstItem + index;
@@ -142,7 +148,10 @@ export default function CloudConnectorsTable() {
                         />
                       </div>
                       <div>
-                        <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
+                        <span 
+                          className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 cursor-pointer transition-colors"
+                          onClick={() => navigateToEditConnector(index)}
+                        >
                           {item.name}
                         </span>
                       </div>
@@ -245,8 +254,6 @@ export default function CloudConnectorsTable() {
           </Button>
         </div>
       </div>
-
-      {/* Modal removed - now using page navigation */}
     </div>
   );
 }
