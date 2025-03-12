@@ -185,7 +185,7 @@ export default function CloudConnectorsTable() {
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {currentItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <TableCell className="col-span-6 px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     No connectors found matching your search.
                   </TableCell>
                 </TableRow>
