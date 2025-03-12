@@ -1,6 +1,22 @@
 "use client";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
+// Define the shape of the data being submitted in forms
+export interface ImageFormData {
+  name: string;
+  osVersion: string;
+  provider: string;
+  type: string;
+  poolSize: number;
+  active: boolean;
+  description: string;
+  configuration: {
+    cpu: number;
+    memory: number;
+    storage: number;
+  };
+}
+
 // Define the interface for VM Image
 export interface VMImage {
   icon: string;

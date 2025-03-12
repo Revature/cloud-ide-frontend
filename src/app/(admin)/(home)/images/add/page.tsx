@@ -1,29 +1,29 @@
 "use client";
 import { useRouter } from "next/navigation";
-import CloudConnectorForm from "@/components/cloud-connector/CloudConnectorForm";
+import ImageForm from "@/components/image/ImageForm";
 import Button from "@/components/ui/button/Button";
-import { NewCloudConnector } from "@/context/CloudConnectorsContext";
+import { ImageFormData } from "@/components/image/ImageForm";
 import Breadcrumb from "@/components/ui/breadcrumb/Breadcrumb";
 
-export default function AddCloudConnectorPage() {
+export default function AddImagePage() {
   const router = useRouter();
   
   const breadcrumbItems = [
     { label: "Home", href: "/" },
-    { label: "Cloud Connectors", href: "/cloud-connectors" },
-    { label: "Add Connector" }
+    { label: "VM Images", href: "/images" },
+    { label: "Add Image" }
   ];
   
-  const handleSubmit = (connectorData: NewCloudConnector) => {
-    console.log("Submitting connector data:", connectorData);
-    // Here you would handle the API call to add the connector
+  const handleSubmit = (imageData: ImageFormData) => {
+    console.log("Submitting image data:", imageData);
+    // Here you would handle the API call to add the image
     
-    // Navigate back to the connectors list page
-    router.push("/cloud-connectors");
+    // Navigate back to the images list page
+    router.push("/images");
   };
   
   const handleCancel = () => {
-    router.push("/cloud-connectors");
+    router.push("/images");
   };
   
   return (
@@ -59,12 +59,12 @@ export default function AddCloudConnectorPage() {
               Back
             </Button>
             <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">
-              Add New Cloud Connector
+              Add New VM Image
             </h1>
           </div>
           
           <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.05] rounded-xl p-6">
-            <CloudConnectorForm 
+            <ImageForm 
               onSubmit={handleSubmit} 
               onCancel={handleCancel} 
             />

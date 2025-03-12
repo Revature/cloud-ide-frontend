@@ -1,23 +1,23 @@
 "use client";
 import { useParams } from "next/navigation";
-import ViewConnector from "@/components/cloud-connector/CloudConnectorView";
+import ViewImage from "@/components/image/ImageView";
 import Breadcrumb from "@/components/ui/breadcrumb/Breadcrumb";
-import { useCloudConnectors } from "@/context/CloudConnectorsContext";
+import { useImages } from "@/context/ImagesContext";
 
-export default function ViewConnectorPage() {
-  const { connectors } = useCloudConnectors();
+export default function ViewImagePage() {
+  const { images } = useImages();
   const params = useParams();
-  const connectorIndex = parseInt(params.id as string, 10);
+  const imageIndex = parseInt(params.id as string, 10);
   
-  // Get connector name for the breadcrumb if available
-  const connectorName = !isNaN(connectorIndex) && connectors[connectorIndex] 
-    ? connectors[connectorIndex].name 
-    : "Connector Details";
+  // Get image name for the breadcrumb if available
+  const imageName = !isNaN(imageIndex) && images[imageIndex] 
+    ? images[imageIndex].name 
+    : "Image Details";
     
   const breadcrumbItems = [
     { label: "Home", href: "/" },
-    { label: "Cloud Connectors", href: "/cloud-connectors" },
-    { label: connectorName }
+    { label: "VM Images", href: "/images" },
+    { label: imageName }
   ];
   
   return (
@@ -28,7 +28,7 @@ export default function ViewConnectorPage() {
       
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12">
-          <ViewConnector />
+          <ViewImage />
         </div>
       </div>
     </div>

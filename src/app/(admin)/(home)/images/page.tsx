@@ -4,14 +4,14 @@ import ImagesTable from "@/components/tables/BasicTables/ImagesTable";
 import Breadcrumb from "@/components/ui/breadcrumb/Breadcrumb";
 
 export const metadata: Metadata = {
-  title: "Cloud Connectors | Cloud IDE",
-  description: "Manage your cloud provider connections",
+  title: "Images | Cloud IDE",
+  description: "Manage your virtual machine images",
 };
 
-export default function CloudConnectors() {
+export default function ImagesPage() {
   const breadcrumbItems = [
     { label: "Home", href: "/" },
-    { label: "Cloud Connectors" }
+    { label: "Images" }
   ];
 
   return (
