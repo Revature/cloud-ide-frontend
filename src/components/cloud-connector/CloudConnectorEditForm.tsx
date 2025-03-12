@@ -135,7 +135,7 @@ const ConnectorEditForm: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <>
       <div className="flex items-center mb-6">
         <Button 
           variant="outline" 
@@ -280,7 +280,7 @@ const ConnectorEditForm: React.FC = () => {
           </div>
         </Form>
       </div>
-    </div>
+    </>
   );
 };
 

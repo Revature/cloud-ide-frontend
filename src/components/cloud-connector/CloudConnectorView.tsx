@@ -37,14 +37,14 @@ const ViewConnector: React.FC = () => {
 
   if (loading || !connector) {
     return (
-      <div className="container mx-auto px-4 py-6 flex justify-center">
+      <div className="flex justify-center">
         <div className="animate-pulse">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <>
       <div className="flex items-center mb-6">
         <Button 
           variant="outline" 
@@ -215,7 +215,7 @@ const ViewConnector: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
