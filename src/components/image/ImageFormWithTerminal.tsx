@@ -83,6 +83,7 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
   useEffect(() => {
     const loadTerminalComponent = async () => {
       try {
+        // Change from Terminal to InteractiveTerminal
         const terminalModule = await import('@/components/terminal/InteractiveTerminal');
         setTerminal(() => terminalModule.default);
         setTerminalLoading(false);
@@ -491,20 +492,20 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
 
           {/* Terminal Component */}
           <div className="border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-900 text-white p-1 font-mono terminal-shadow">
-            {terminalLoading ? (
-              <div className="h-96 w-full rounded-lg bg-gray-800 p-4 font-mono text-gray-300 animate-pulse">
-                Loading terminal...
-              </div>
-            ) : terminalError || !Terminal ? (
-              <FallbackTerminal logs={terminalLogs} />
-            ) : (
-              <Terminal 
-                logs={terminalLogs} 
-                simulationComplete={simulationComplete}
-                onCommand={handleTerminalCommand}
-                allowInput={true}
-              />
-            )}
+          {terminalLoading ? (
+            <div className="h-96 w-full rounded-lg bg-gray-800 p-4 font-mono text-gray-300 animate-pulse">
+              Loading terminal...
+            </div>
+          ) : terminalError || !Terminal ? (
+            <FallbackTerminal logs={terminalLogs} />
+          ) : (
+            <InteractiveTerminal 
+              logs={terminalLogs} 
+              simulationComplete={simulationComplete}
+              onCommand={handleTerminalCommand}
+              allowInput={true}
+            />
+          )}
           </div>
 
           {/* Additional Info */}

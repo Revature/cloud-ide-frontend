@@ -1,41 +1,15 @@
 import { useState, useEffect } from 'react';
 
-// Dynamic import with proper error handling
-export const useDynamicTerminal = () => {
-  const [Terminal, setTerminal] = useState<React.ComponentType<{logs: string[]}> | null>(null);
-  const [FallbackTerminal, setFallbackTerminal] = useState<React.ComponentType<{logs: string[]}> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const loadTerminalComponents = async () => {
-      try {
-        const terminalModule = await import('@/components/terminal/Terminal');
-        const fallbackModule = await import('@/components/terminal/FallbackTerminal');
-        
-        setTerminal(() => terminalModule.default);
-        setFallbackTerminal(() => fallbackModule.default);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading terminal components:', err);
-        setError(err instanceof Error ? err : new Error('Unknown error loading terminal'));
-        setLoading(false);
-      }
-    };
-
-    loadTerminalComponents();
-  }, []);
-
-  return { 
-    Terminal, 
-    FallbackTerminal, 
-    loading, 
-    error 
-  };
-};
-
-// XTerm modules loading
-export const useXtermModules = () => {
+/**
+ * A hook that dynamically imports terminal components and xterm modules.
+ * This combines both terminal component loading and xterm module loading in one hook.
+ */
+export const useTerminal = () => {
+  // Terminal components
+  const [InteractiveTerminal, setInteractiveTerminal] = useState<React.ComponentType<any> | null>(null);
+  const [FallbackTerminal, setFallbackTerminal] = useState<React.ComponentType<any> | null>(null);
+  
+  // XTerm modules
   const [modules, setModules] = useState<{
     xterm: any | null;
     fitAddon: any | null;
@@ -46,36 +20,84 @@ export const useXtermModules = () => {
     webLinksAddon: null
   });
 
+  // Loading and error states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return; // Skip on server-side
 
-    const loadModules = async () => {
+    const loadTerminalComponents = async () => {
       try {
-        // Load XTerm modules dynamically
-        const xtermModule = await import('@xterm/xterm');
-        const fitAddonModule = await import('@xterm/addon-fit');
-        const webLinksAddonModule = await import('@xterm/addon-web-links');
-
+        // Parallel loading of components and modules
+        const [
+          interactiveModule, 
+          fallbackModule,
+          xtermModule,
+          fitAddonModule,
+          webLinksAddonModule
+        ] = await Promise.all([
+          import('@/components/terminal/InteractiveTerminal'),
+          import('@/components/terminal/FallbackTerminal'),
+          import('@xterm/xterm'),
+          import('@xterm/addon-fit'),
+          import('@xterm/addon-web-links')
+        ]);
+        
+        // Set component modules
+        setInteractiveTerminal(() => interactiveModule.default);
+        setFallbackTerminal(() => fallbackModule.default);
+        
+        // Set xterm modules
         setModules({
           xterm: xtermModule,
           fitAddon: fitAddonModule,
           webLinksAddon: webLinksAddonModule
         });
+        
         setLoading(false);
       } catch (err) {
-        console.error('Error loading XTerm modules:', err);
-        setError(err instanceof Error ? err : new Error('Unknown error loading XTerm modules'));
+        console.error('Error loading terminal components or modules:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error loading terminal components or modules'));
+        
+        // Try to at least load the fallback terminal
+        try {
+          const fallbackModule = await import('@/components/terminal/FallbackTerminal');
+          setFallbackTerminal(() => fallbackModule.default);
+        } catch (fallbackErr) {
+          console.error('Error loading fallback terminal:', fallbackErr);
+        }
+        
         setLoading(false);
       }
     };
 
-    loadModules();
+    loadTerminalComponents();
   }, []);
 
+  return { 
+    InteractiveTerminal, 
+    FallbackTerminal, 
+    modules,
+    loading, 
+    error 
+  };
+};
+
+// For backwards compatibility, keep these separate hooks that use the combined hook internally
+export const useDynamicTerminal = () => {
+  const { InteractiveTerminal, FallbackTerminal, loading, error } = useTerminal();
+  return {
+    Terminal: InteractiveTerminal,
+    FallbackTerminal,
+    loading,
+    error
+  };
+};
+
+export const useXtermModules = () => {
+  const { modules, loading, error } = useTerminal();
   return { modules, loading, error };
 };
 
-export default useXtermModules;
+export default useTerminal;

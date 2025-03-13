@@ -134,9 +134,14 @@ const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
           if (ev.keyCode === 13) { // Enter key
             // Log the full command with prompt for history display
             const fullCommandDisplay = `${promptText}${currentCommand}`;
-            console.log("Command executed:", fullCommandDisplay);
             
-            // Process the command
+            // First, write the current command to the terminal
+            newTerminal.write('\r\n');
+            
+            // Process the command using the handler
+            handleBasicCommands(currentCommand, newTerminal);
+            
+            // Also call the external handler if provided
             if (onCommand) {
               onCommand(currentCommand);
             }
@@ -145,11 +150,6 @@ const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
             if (currentCommand.trim() !== '') {
               setCommandHistory(prev => [currentCommand, ...prev].slice(0, 20));
             }
-            
-            newTerminal.write('\r\n');
-            
-            // Handle basic shell commands for demo purposes
-            handleBasicCommands(currentCommand, newTerminal);
             
             // Reset command and history index
             setCurrentCommand('');
@@ -434,39 +434,48 @@ const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
   }, [simulationComplete, allowInput, terminal]);
 
   // Write logs to the terminal
+  // Replace the logs useEffect with this version
   useEffect(() => {
     if (terminal && logs.length > 0) {
-      const lastLog = logs[logs.length - 1];
+      // Find the new logs that haven't been displayed yet
+      const lastDisplayedIndex = terminal._lastDisplayedLogIndex || -1;
+      const newLogs = logs.slice(lastDisplayedIndex + 1);
       
-      // Process command coloring - commands starting with $ get a special color
-      if (lastLog.startsWith('$ ')) {
-        terminal.write('\x1b[33m'); // Yellow color for commands
-        terminal.write(lastLog.substring(0, 2));
-        terminal.write('\x1b[0m'); // Reset color
-        terminal.writeln(lastLog.substring(2));
-      } 
-      // Process progress indicators
-      else if (lastLog.includes('Progress:')) {
-        terminal.write('\x1b[36m'); // Cyan for progress
-        terminal.writeln(lastLog);
-        terminal.write('\x1b[0m'); // Reset color
+      // Process and display each new log
+      for (const logEntry of newLogs) {
+        // Process command coloring - commands starting with $ get a special color
+        if (logEntry.startsWith('$ ')) {
+          terminal.write('\x1b[33m'); // Yellow color for commands
+          terminal.write(logEntry.substring(0, 2));
+          terminal.write('\x1b[0m'); // Reset color
+          terminal.writeln(logEntry.substring(2));
+        } 
+        // Process progress indicators
+        else if (logEntry.includes('Progress:')) {
+          terminal.write('\x1b[36m'); // Cyan for progress
+          terminal.writeln(logEntry);
+          terminal.write('\x1b[0m'); // Reset color
+        }
+        // Success messages (completed or success)
+        else if (logEntry.includes('[SUCCESS]') || logEntry.includes('successfully') || logEntry.includes('complete')) {
+          terminal.write('\x1b[32m'); // Green for success
+          terminal.writeln(logEntry);
+          terminal.write('\x1b[0m'); // Reset color
+        }
+        // Error messages
+        else if (logEntry.includes('error') || logEntry.includes('fail')) {
+          terminal.write('\x1b[31m'); // Red for errors
+          terminal.writeln(logEntry);
+          terminal.write('\x1b[0m'); // Reset color
+        }
+        // Default text
+        else {
+          terminal.writeln(logEntry);
+        }
       }
-      // Success messages (completed or success)
-      else if (lastLog.includes('[SUCCESS]') || lastLog.includes('successfully') || lastLog.includes('complete')) {
-        terminal.write('\x1b[32m'); // Green for success
-        terminal.writeln(lastLog);
-        terminal.write('\x1b[0m'); // Reset color
-      }
-      // Error messages
-      else if (lastLog.includes('error') || lastLog.includes('fail')) {
-        terminal.write('\x1b[31m'); // Red for errors
-        terminal.writeln(lastLog);
-        terminal.write('\x1b[0m'); // Reset color
-      }
-      // Default text
-      else {
-        terminal.writeln(lastLog);
-      }
+      
+      // Update the last displayed log index
+      terminal._lastDisplayedLogIndex = logs.length - 1;
     }
   }, [logs, terminal]);
 
