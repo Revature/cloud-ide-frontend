@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useImages } from "@/context/ImagesContext";
+import { useImages, machineTypes } from "@/context/ImagesContext";
+import { CloudConnector } from "@/context/CloudConnectorsContext";
 import Form from "@/components/form/Form";
 import Input from "@/components/form/input/InputField";
 import Select from "@/components/form/Select";
@@ -9,77 +10,11 @@ import Button from "@/components/ui/button/Button";
 import Label from "@/components/form/Label";
 import Toggle from "@/components/form/input/Toggle";
 
-// Define VM type options
-type ImageProvider = 'aws' | 'azure' | 'gcp';
-type ImageType = 'standard' | 'data_science' | 'devops' | 'image_builder' | 'windows';
-
-// Define hardware configuration options
-const cpuOptions = [
-  { value: "1", label: "1 Core" },
-  { value: "2", label: "2 Cores" },
-  { value: "4", label: "4 Cores" },
-  { value: "8", label: "8 Cores" },
-  { value: "16", label: "16 Cores" }
-];
-
-const memoryOptions = [
-  { value: "2", label: "2 GB" },
-  { value: "4", label: "4 GB" },
-  { value: "8", label: "8 GB" },
-  { value: "16", label: "16 GB" },
-  { value: "32", label: "32 GB" },
-  { value: "64", label: "64 GB" }
-];
-
-const storageOptions = [
-  { value: "20", label: "20 GB" },
-  { value: "50", label: "50 GB" },
-  { value: "100", label: "100 GB" },
-  { value: "200", label: "200 GB" },
-  { value: "500", label: "500 GB" }
-];
-
-// Define types for each provider
-const imageTypes: Record<ImageProvider, { value: ImageType, label: string }[]> = {
-  aws: [
-    { value: "standard", label: "Standard Development" },
-    { value: "data_science", label: "Data Science" },
-    { value: "devops", label: "DevOps Toolchain" },
-    { value: "image_builder", label: "Image Builder" }
-  ],
-  azure: [
-    { value: "standard", label: "Standard Development" },
-    { value: "windows", label: "Windows Development" },
-    { value: "data_science", label: "Data Science" }
-  ],
-  gcp: [
-    { value: "standard", label: "Standard Development" },
-    { value: "data_science", label: "Data Science" },
-    { value: "devops", label: "DevOps Toolchain" }
-  ]
-};
-
-// Define OS versions for each provider
-const osVersions: Record<ImageProvider, { value: string, label: string }[]> = {
-  aws: [
-    { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
-    { value: "Ubuntu 20.04 LTS", label: "Ubuntu 20.04 LTS" },
-    { value: "Amazon Linux 2", label: "Amazon Linux 2" },
-    { value: "Red Hat Enterprise Linux 9", label: "Red Hat Enterprise Linux 9" }
-  ],
-  azure: [
-    { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
-    { value: "Windows Server 2022", label: "Windows Server 2022" },
-    { value: "Windows 11", label: "Windows 11" },
-    { value: "CentOS 8", label: "CentOS 8" }
-  ],
-  gcp: [
-    { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
-    { value: "Ubuntu 20.04 LTS", label: "Ubuntu 20.04 LTS" },
-    { value: "Debian 11", label: "Debian 11" },
-    { value: "Alpine Linux 3.18", label: "Alpine Linux 3.18" }
-  ]
-};
+// Convert machine types for select dropdown
+const machineOptions = machineTypes.map(machine => ({
+  value: machine.identifier,
+  label: `${machine.name} (${machine.cpu_count} CPU, ${machine.memory_size} GB RAM, ${machine.storage_size} GB Storage)`
+}));
 
 const EditImageForm: React.FC = () => {
   const router = useRouter();
@@ -88,39 +23,42 @@ const EditImageForm: React.FC = () => {
   const imageIndex = parseInt(params.id as string, 10);
   
   // State for form data
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    machineIdentifier: string;
+    active: boolean;
+    cloudConnector?: CloudConnector;
+  }>({
     name: "",
-    provider: "aws" as ImageProvider,
-    osVersion: "",
-    type: "standard" as ImageType,
-    poolSize: 0,
     description: "",
+    machineIdentifier: "",
     active: true,
-    cpu: "2",
-    memory: "4",
-    storage: "50"
+    cloudConnector: undefined
   });
+
+  // Get the selected machine object
+  const getSelectedMachine = () => {
+    return machineTypes.find(m => m.identifier === formData.machineIdentifier) || machineTypes[1]; // Default to Medium
+  };
+  
+  // State for displaying form
+  const [loading, setLoading] = useState(true);
   
   // Load image data
   useEffect(() => {
     if (!isNaN(imageIndex) && images[imageIndex]) {
       const image = images[imageIndex];
       
-      // Convert provider name to lowercase for type safety
-      const providerKey = image.provider.toLowerCase() as ImageProvider;
-      
       setFormData({
         name: image.name,
-        provider: providerKey,
-        osVersion: image.osVersion,
-        type: image.type as ImageType,
-        poolSize: image.poolSize,
         description: image.description || "",
+        machineIdentifier: image.machine.identifier,
         active: image.active,
-        cpu: image.configuration.cpu.toString(),
-        memory: image.configuration.memory.toString(),
-        storage: image.configuration.storage.toString()
+        cloudConnector: image.cloudConnector
       });
+      
+      setLoading(false);
     } else {
       // Handle invalid index
       router.push('/images');
@@ -133,17 +71,10 @@ const EditImageForm: React.FC = () => {
     // Update the image with the form data
     updateImage(imageIndex, {
       name: formData.name,
-      osVersion: formData.osVersion,
-      provider: formData.provider.charAt(0).toUpperCase() + formData.provider.slice(1), // Capitalize provider name
-      type: formData.type,
-      poolSize: parseInt(formData.poolSize.toString()),
       description: formData.description,
-      active: formData.active,
-      configuration: {
-        cpu: parseInt(formData.cpu),
-        memory: parseInt(formData.memory),
-        storage: parseInt(formData.storage)
-      }
+      machine: getSelectedMachine(),
+      active: formData.active
+      // Note: We don't update cloudConnector as it should remain the same
     });
     
     router.push('/images');
@@ -159,6 +90,17 @@ const EditImageForm: React.FC = () => {
   const goBack = () => {
     router.push('/images');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  // Get the current machine details for display
+  const currentMachine = getSelectedMachine();
 
   return (
     <>
@@ -214,65 +156,42 @@ const EditImageForm: React.FC = () => {
               />
             </div>
 
-            {/* Cloud Provider (disabled in edit mode) */}
+            {/* Cloud Provider (Read-only) */}
             <div className="col-span-full md:col-span-1">
-              <Label htmlFor="provider">Cloud Provider</Label>
-              <Select
-                defaultValue={formData.provider}
-                options={[
-                  { value: "aws", label: "AWS" },
-                  { value: "azure", label: "Azure" },
-                  { value: "gcp", label: "GCP" }
-                ]}
-                onChange={(value) => {
-                  const provider = value as ImageProvider;
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    provider: provider,
-                    type: imageTypes[provider][0].value,
-                    osVersion: osVersions[provider][0].value
-                  }));
-                }}
-                // Note: disabled property needs to be implemented in your Select component
-              />
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Cloud provider cannot be changed after creation
-              </div>
+              <Label htmlFor="cloudConnector">Cloud Provider</Label>
+              {formData.cloudConnector ? (
+                <div className="flex items-center gap-2 h-[42px] px-4 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
+                  <div className="w-6 h-6 relative flex-shrink-0">
+                    <img 
+                      src={formData.cloudConnector.image} 
+                      alt={formData.cloudConnector.name}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {formData.cloudConnector.name} ({formData.cloudConnector.region})
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center h-[42px] px-4 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    No cloud provider specified
+                  </p>
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Cloud provider cannot be changed after image creation
+              </p>
             </div>
 
-            {/* OS Version */}
+            {/* Machine Type */}
             <div className="col-span-full md:col-span-1">
-              <Label htmlFor="osVersion">OS Version</Label>
+              <Label htmlFor="machine">Machine Type</Label>
               <Select
-                defaultValue={formData.osVersion}
-                options={osVersions[formData.provider]}
-                onChange={(value) => setFormData(prev => ({ ...prev, osVersion: value }))}
+                defaultValue={formData.machineIdentifier}
+                options={machineOptions}
+                onChange={(value) => setFormData(prev => ({ ...prev, machineIdentifier: value }))}
               />
-            </div>
-
-            {/* Image Type */}
-            <div className="col-span-full md:col-span-1">
-              <Label htmlFor="type">Image Type</Label>
-              <Select
-                defaultValue={formData.type}
-                options={imageTypes[formData.provider]}
-                onChange={(value) => setFormData(prev => ({ ...prev, type: value as ImageType }))}
-              />
-            </div>
-
-            {/* Pool Size */}
-            <div className="col-span-full md:col-span-1">
-              <Label htmlFor="poolSize">Pool Size</Label>
-              <Input
-                name="poolSize"
-                type="number"
-                defaultValue={formData.poolSize.toString()}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                  setFormData(prev => ({ ...prev, poolSize: parseInt(e.target.value) || 0 }))}
-              />
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Number of ready VMs to maintain in the pool
-              </div>
             </div>
 
             {/* Active/Inactive Toggle */}
@@ -298,44 +217,89 @@ const EditImageForm: React.FC = () => {
               />
             </div>
 
-            {/* Hardware Configuration Section */}
+            {/* Cloud Provider Info */}
+            {formData.cloudConnector && (
+              <div className="col-span-full mb-4 mt-4">
+                <h2 className="text-lg font-medium text-gray-700 dark:text-white/80">
+                  Cloud Provider Information
+                </h2>
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Details of the cloud provider for this image
+                </div>
+                <div className="mt-4 p-4 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-6 h-6 relative flex-shrink-0">
+                          <img 
+                            src={formData.cloudConnector.image} 
+                            alt={formData.cloudConnector.name}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <p className="text-base font-medium dark:text-gray-200">
+                          {formData.cloudConnector.name}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Region</p>
+                      <p className="text-base font-medium dark:text-gray-200">
+                        {formData.cloudConnector.region}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</p>
+                      <p className="text-base font-medium dark:text-gray-200">
+                        {formData.cloudConnector.type}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+                      <p className={`text-base font-medium ${
+                        formData.cloudConnector.active 
+                          ? "text-green-600 dark:text-green-400" 
+                          : "text-gray-500 dark:text-gray-400"
+                      }`}>
+                        {formData.cloudConnector.active ? "Active" : "Inactive"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Machine Configuration Preview Section */}
             <div className="col-span-full mb-4 mt-4">
               <h2 className="text-lg font-medium text-gray-700 dark:text-white/80">
-                Hardware Configuration
+                Machine Configuration
               </h2>
               <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Resource specifications for VM instances
               </div>
             </div>
 
-            {/* CPU Cores */}
-            <div className="col-span-full md:col-span-1">
-              <Label htmlFor="cpu">CPU Cores</Label>
-              <Select
-                defaultValue={formData.cpu}
-                options={cpuOptions}
-                onChange={(value) => setFormData(prev => ({ ...prev, cpu: value }))}
-              />
-            </div>
-
-            {/* Memory */}
-            <div className="col-span-full md:col-span-1">
-              <Label htmlFor="memory">Memory (GB)</Label>
-              <Select
-                defaultValue={formData.memory}
-                options={memoryOptions}
-                onChange={(value) => setFormData(prev => ({ ...prev, memory: value }))}
-              />
-            </div>
-
-            {/* Storage */}
-            <div className="col-span-full md:col-span-1">
-              <Label htmlFor="storage">Storage (GB)</Label>
-              <Select
-                defaultValue={formData.storage}
-                options={storageOptions}
-                onChange={(value) => setFormData(prev => ({ ...prev, storage: value }))}
-              />
+            {/* Machine Details Preview */}
+            <div className="col-span-full p-4 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">CPU</p>
+                  <p className="text-base font-medium dark:text-gray-200">{currentMachine.cpu_count} {currentMachine.cpu_count === 1 ? "Core" : "Cores"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Memory</p>
+                  <p className="text-base font-medium dark:text-gray-200">{currentMachine.memory_size} GB</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Storage</p>
+                  <p className="text-base font-medium dark:text-gray-200">{currentMachine.storage_size} GB</p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Instance Type</p>
+                <p className="text-base font-medium dark:text-gray-200">{currentMachine.identifier}</p>
+              </div>
             </div>
           </div>
 

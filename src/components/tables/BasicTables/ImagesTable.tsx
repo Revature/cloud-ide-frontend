@@ -8,10 +8,9 @@ import {
   TableRow,
 } from "../../ui/table";
 import Button from "../../ui/button/Button";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Toggle from "@/components/form/input/Toggle";
-import { useImages } from "@/context/ImagesContext"
+import { useImages } from "@/context/ImagesContext";
 
 export default function ImagesTable() {
   // Get images from context
@@ -37,9 +36,10 @@ export default function ImagesTable() {
       const results = images.filter(
         (image) =>
           image.name.toLowerCase().includes(lowercasedSearch) ||
-          image.provider.toLowerCase().includes(lowercasedSearch) ||
-          image.type.toLowerCase().includes(lowercasedSearch) ||
-          image.osVersion.toLowerCase().includes(lowercasedSearch)
+          image.machine.name.toLowerCase().includes(lowercasedSearch) ||
+          image.machine.identifier.toLowerCase().includes(lowercasedSearch) ||
+          image.description.toLowerCase().includes(lowercasedSearch) ||
+          (image.cloudConnector?.name && image.cloudConnector.name.toLowerCase().includes(lowercasedSearch))
       );
       setFilteredImages(results);
     }
@@ -93,9 +93,7 @@ export default function ImagesTable() {
   const getOriginalIndex = (index: number) => {
     const item = currentItems[index];
     return images.findIndex(image => 
-      image.name === item.name && 
-      image.provider === item.provider && 
-      image.type === item.type
+      image.identifier === item.identifier
     );
   };
   
@@ -155,25 +153,25 @@ export default function ImagesTable() {
                   isHeader
                   className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400"
                 >
-                  OS Version
+                  Cloud Provider
                 </TableCell>
                 <TableCell
                   isHeader
                   className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400"
                 >
-                  Provider
+                  Machine
                 </TableCell>
                 <TableCell
                   isHeader
                   className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400"
                 >
-                  Type
+                  Resources
                 </TableCell>
                 <TableCell
                   isHeader
                   className="px-4 py-3 font-normal text-gray-500 text-start text-theme-sm dark:text-gray-400"
                 >
-                  Pool Size
+                  Identifier
                 </TableCell>
                 <TableCell
                   isHeader
@@ -200,17 +198,9 @@ export default function ImagesTable() {
                 currentItems.map((item, index) => {
                   const originalIndex = getOriginalIndex(index);
                   return (
-                    <TableRow key={index}>
+                    <TableRow key={item.identifier}>
                       <TableCell className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 flex items-center justify-center">
-                            <Image
-                              width={32}
-                              height={32}
-                              src={item.icon || "/icons/image-icon.svg"}
-                              alt={item.name}
-                            />
-                          </div>
                           <div>
                             <span 
                               className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 cursor-pointer transition-colors"
@@ -218,20 +208,49 @@ export default function ImagesTable() {
                             >
                               {item.name}
                             </span>
+                            <span 
+                              className="block text-xs text-gray-500 dark:text-gray-500 max-w-[200px] truncate cursor-help"
+                              title={item.description}
+                            >
+                              {item.description}
+                            </span>
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="px-4 py-4">
+                        {item.cloudConnector ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 relative flex-shrink-0">
+                              <img 
+                                src={item.cloudConnector.image} 
+                                alt={item.cloudConnector.name}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            <span className="text-gray-700 text-theme-sm dark:text-gray-400">
+                              {item.cloudConnector.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-theme-sm dark:text-gray-500">
+                            Not specified
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="px-4 py-4 text-gray-700 whitespace-nowrap text-theme-sm dark:text-gray-400">
-                        {item.osVersion}
+                        {item.machine.name}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400">
-                        {item.provider}
+                        <div className="flex flex-col">
+                          <span>{item.machine.cpu_count} CPU{item.machine.cpu_count > 1 ? 's' : ''}</span>
+                          <span>{item.machine.memory_size} GB RAM</span>
+                          <span>{item.machine.storage_size} GB Storage</span>
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400">
-                        {item.type}
-                      </TableCell>
-                      <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400">
-                        {item.poolSize}
+                        <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded dark:bg-gray-700 dark:text-gray-300">
+                          {item.identifier}
+                        </span>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-gray-700 text-theme-sm dark:text-gray-400 min-w-[150px] w-[150px]">
                         <Toggle

@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useImages } from "@/context/ImagesContext";
+import { useImages, machineTypes, Machine } from "@/context/ImagesContext";
+import { useCloudConnectors, CloudConnector } from "@/context/CloudConnectorsContext";
 import Form from "@/components/form/Form";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
@@ -9,99 +10,13 @@ import Toggle from "@/components/form/input/Toggle";
 import Button from "@/components/ui/button/Button";
 import Select from "@/components/form/Select";
 
-// Define VM type options
-type ImageProvider = 'aws' | 'azure' | 'gcp';
-type ImageType = 'standard' | 'data_science' | 'devops' | 'image_builder' | 'windows';
-
-// Define the provider options
-const cloudProviders = [
-  { value: "aws", label: "Amazon Web Services (AWS)" },
-  { value: "azure", label: "Microsoft Azure" },
-  { value: "gcp", label: "Google Cloud Platform (GCP)" }
-];
-
-// Define hardware configuration options
-const cpuOptions = [
-  { value: "1", label: "1 Core" },
-  { value: "2", label: "2 Cores" },
-  { value: "4", label: "4 Cores" },
-  { value: "8", label: "8 Cores" },
-  { value: "16", label: "16 Cores" }
-];
-
-const memoryOptions = [
-  { value: "2", label: "2 GB" },
-  { value: "4", label: "4 GB" },
-  { value: "8", label: "8 GB" },
-  { value: "16", label: "16 GB" },
-  { value: "32", label: "32 GB" },
-  { value: "64", label: "64 GB" }
-];
-
-const storageOptions = [
-  { value: "20", label: "20 GB" },
-  { value: "50", label: "50 GB" },
-  { value: "100", label: "100 GB" },
-  { value: "200", label: "200 GB" },
-  { value: "500", label: "500 GB" }
-];
-
-// Define types for each provider
-const imageTypes: Record<ImageProvider, { value: ImageType, label: string }[]> = {
-  aws: [
-    { value: "standard", label: "Standard Development" },
-    { value: "data_science", label: "Data Science" },
-    { value: "devops", label: "DevOps Toolchain" },
-    { value: "image_builder", label: "Image Builder" }
-  ],
-  azure: [
-    { value: "standard", label: "Standard Development" },
-    { value: "windows", label: "Windows Development" },
-    { value: "data_science", label: "Data Science" }
-  ],
-  gcp: [
-    { value: "standard", label: "Standard Development" },
-    { value: "data_science", label: "Data Science" },
-    { value: "devops", label: "DevOps Toolchain" }
-  ]
-};
-
-// Define OS versions for each provider
-const osVersions: Record<ImageProvider, { value: string, label: string }[]> = {
-  aws: [
-    { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
-    { value: "Ubuntu 20.04 LTS", label: "Ubuntu 20.04 LTS" },
-    { value: "Amazon Linux 2", label: "Amazon Linux 2" },
-    { value: "Red Hat Enterprise Linux 9", label: "Red Hat Enterprise Linux 9" }
-  ],
-  azure: [
-    { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
-    { value: "Windows Server 2022", label: "Windows Server 2022" },
-    { value: "Windows 11", label: "Windows 11" },
-    { value: "CentOS 8", label: "CentOS 8" }
-  ],
-  gcp: [
-    { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
-    { value: "Ubuntu 20.04 LTS", label: "Ubuntu 20.04 LTS" },
-    { value: "Debian 11", label: "Debian 11" },
-    { value: "Alpine Linux 3.18", label: "Alpine Linux 3.18" }
-  ]
-};
-
 // Define the shape of the data being submitted
 export interface ImageFormData {
   name: string;
-  osVersion: string;
-  provider: string;
-  type: string;
-  poolSize: number;
-  active: boolean;
   description: string;
-  configuration: {
-    cpu: number;
-    memory: number;
-    storage: number;
-  };
+  machine: Machine;
+  active: boolean;
+  cloudConnector?: CloudConnector;
 }
 
 interface ImageFormProps {
@@ -111,25 +26,50 @@ interface ImageFormProps {
 
 const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
   const { addImage } = useImages();
+  const { connectors } = useCloudConnectors();
   const router = useRouter();
   const [active, setActive] = useState(true);
 
+  // Convert machine types for select dropdown
+  const machineOptions = machineTypes.map(machine => ({
+    value: machine.identifier,
+    label: `${machine.name} (${machine.cpu_count} CPU, ${machine.memory_size} GB RAM, ${machine.storage_size} GB Storage)`
+  }));
+
+  // Create options for cloud connectors dropdown
+  const cloudConnectorOptions = connectors
+    .filter(connector => connector.active) // Only show active connectors
+    .map(connector => ({
+      value: connector.name,
+      label: `${connector.name} (${connector.region})`
+    }));
+
   // State for form data with default values
-  const [selectedProvider, setSelectedProvider] = useState<ImageProvider>("aws");
-  const [selectedOsVersion, setSelectedOsVersion] = useState(osVersions.aws[0].value);
-  const [selectedType, setSelectedType] = useState<ImageType>("standard");
-  const [selectedCpu, setSelectedCpu] = useState("2");
-  const [selectedMemory, setSelectedMemory] = useState("4");
-  const [selectedStorage, setSelectedStorage] = useState("50");
-  const [poolSize, setPoolSize] = useState(3);
+  const [selectedMachine, setSelectedMachine] = useState(machineTypes[1].identifier); // Default to Medium
+  const [selectedConnector, setSelectedConnector] = useState(
+    connectors.length > 0 && connectors[0].active ? connectors[0].name : ""
+  );
   const [description, setDescription] = useState("");
   const [name, setName] = useState("");
 
-  const handleProviderChange = (value: string) => {
-    const provider = value as ImageProvider;
-    setSelectedProvider(provider);
-    setSelectedOsVersion(osVersions[provider][0].value);
-    setSelectedType("standard");
+  // Handle machine selection change
+  const handleMachineChange = (value: string) => {
+    setSelectedMachine(value);
+  };
+
+  // Handle cloud connector selection change
+  const handleConnectorChange = (value: string) => {
+    setSelectedConnector(value);
+  };
+
+  // Get the selected machine object
+  const getSelectedMachineObject = (): Machine => {
+    return machineTypes.find(m => m.identifier === selectedMachine) || machineTypes[1];
+  };
+
+  // Get the selected cloud connector object
+  const getSelectedConnectorObject = (): CloudConnector | undefined => {
+    return connectors.find(c => c.name === selectedConnector);
   };
 
   // Create a manual form submission handler
@@ -139,17 +79,10 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
     // Create new image object using state values
     const newImage: ImageFormData = {
       name: name,
-      osVersion: selectedOsVersion,
-      provider: selectedProvider.toUpperCase(),
-      type: selectedType,
-      poolSize: poolSize,
-      active: active,
       description: description,
-      configuration: {
-        cpu: parseInt(selectedCpu),
-        memory: parseInt(selectedMemory),
-        storage: parseInt(selectedStorage)
-      }
+      machine: getSelectedMachineObject(),
+      active: active,
+      cloudConnector: getSelectedConnectorObject()
     };
     
     console.log("Submitting new image:", newImage);
@@ -173,6 +106,9 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
     manualSubmit();
     console.log(e);
   };
+
+  // Get the current machine details for display
+  const currentMachine = getSelectedMachineObject();
 
   return (
     <div className="container mx-auto">
@@ -202,48 +138,33 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
 
           {/* Cloud Provider */}
           <div className="col-span-full md:col-span-1">
-            <Label htmlFor="provider">Cloud Provider</Label>
-            <Select
-              options={cloudProviders}
-              defaultValue={selectedProvider}
-              onChange={handleProviderChange}
-            />
+            <Label htmlFor="cloudConnector">Cloud Provider</Label>
+            {connectors.filter(c => c.active).length > 0 ? (
+              <Select
+                options={cloudConnectorOptions}
+                defaultValue={selectedConnector}
+                onChange={handleConnectorChange}
+              />
+            ) : (
+              <div className="flex items-center h-[42px] px-4 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  No active cloud connectors available. 
+                  <a href="/cloud-connectors" className="text-brand-500 ml-1 hover:underline">
+                    Add a connector
+                  </a>
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* OS Version */}
+          {/* Machine Type */}
           <div className="col-span-full md:col-span-1">
-            <Label htmlFor="osVersion">OS Version</Label>
+            <Label htmlFor="machine">Machine Type</Label>
             <Select
-              options={osVersions[selectedProvider]}
-              defaultValue={selectedOsVersion}
-              onChange={(value) => setSelectedOsVersion(value)}
+              options={machineOptions}
+              defaultValue={selectedMachine}
+              onChange={handleMachineChange}
             />
-          </div>
-
-          {/* Image Type */}
-          <div className="col-span-full md:col-span-1">
-            <Label htmlFor="type">Image Type</Label>
-            <Select
-              options={imageTypes[selectedProvider]}
-              defaultValue={selectedType}
-              onChange={(value) => setSelectedType(value as ImageType)}
-            />
-          </div>
-
-          {/* Pool Size */}
-          <div className="col-span-full md:col-span-1">
-            <Label htmlFor="poolSize">Pool Size</Label>
-            <Input
-              id="poolSize"
-              name="poolSize"
-              type="number"
-              placeholder="Number of pre-provisioned VMs"
-              defaultValue={poolSize.toString()}
-              onChange={(e) => setPoolSize(parseInt(e.target.value) || 0)}
-            />
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Number of ready VMs to maintain in the pool
-            </div>
           </div>
 
           {/* Active/Inactive Toggle */}
@@ -270,44 +191,87 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
             />
           </div>
 
-          {/* Hardware Configuration Section */}
+          {/* Selected Cloud Provider Info */}
+          {selectedConnector && (
+            <div className="col-span-full mb-4 mt-4">
+              <h2 className="text-lg font-medium text-gray-700 dark:text-white/80">
+                Cloud Provider Information
+              </h2>
+              <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Details of the selected cloud provider
+              </div>
+              <div className="mt-4 p-4 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                {getSelectedConnectorObject() && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-6 h-6 relative flex-shrink-0">
+                          <img 
+                            src={getSelectedConnectorObject()?.image} 
+                            alt={getSelectedConnectorObject()?.name}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <p className="text-base font-medium dark:text-gray-200">
+                          {getSelectedConnectorObject()?.name}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Region</p>
+                      <p className="text-base font-medium dark:text-gray-200">
+                        {getSelectedConnectorObject()?.region}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</p>
+                      <p className="text-base font-medium dark:text-gray-200">
+                        {getSelectedConnectorObject()?.type}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+                      <p className="text-base font-medium dark:text-gray-200">
+                        {getSelectedConnectorObject()?.active ? "Active" : "Inactive"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Machine Configuration Section */}
           <div className="col-span-full mb-4 mt-4">
             <h2 className="text-lg font-medium text-gray-700 dark:text-white/80">
-              Hardware Configuration
+              Machine Configuration
             </h2>
             <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Resource specifications for VM instances
             </div>
           </div>
 
-          {/* CPU Cores */}
-          <div className="col-span-full md:col-span-1">
-            <Label htmlFor="cpu">CPU Cores</Label>
-            <Select
-              options={cpuOptions}
-              defaultValue={selectedCpu}
-              onChange={(value) => setSelectedCpu(value)}
-            />
-          </div>
-
-          {/* Memory */}
-          <div className="col-span-full md:col-span-1">
-            <Label htmlFor="memory">Memory (GB)</Label>
-            <Select
-              options={memoryOptions}
-              defaultValue={selectedMemory}
-              onChange={(value) => setSelectedMemory(value)}
-            />
-          </div>
-
-          {/* Storage */}
-          <div className="col-span-full md:col-span-1">
-            <Label htmlFor="storage">Storage (GB)</Label>
-            <Select
-              options={storageOptions}
-              defaultValue={selectedStorage}
-              onChange={(value) => setSelectedStorage(value)}
-            />
+          {/* Machine Details */}
+          <div className="col-span-full p-4 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">CPU</p>
+                <p className="text-base font-medium dark:text-gray-200">{currentMachine.cpu_count} {currentMachine.cpu_count === 1 ? "Core" : "Cores"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Memory</p>
+                <p className="text-base font-medium dark:text-gray-200">{currentMachine.memory_size} GB</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Storage</p>
+                <p className="text-base font-medium dark:text-gray-200">{currentMachine.storage_size} GB</p>
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Instance Type</p>
+              <p className="text-base font-medium dark:text-gray-200">{currentMachine.identifier}</p>
+            </div>
           </div>
         </div>
 
@@ -316,12 +280,15 @@ const ImageForm: React.FC<ImageFormProps> = ({ onSubmit, onCancel }) => {
           <Button size="sm" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          {/* Use a regular button that manually triggers the form submission */}
           <Button 
             size="sm" 
-            variant="primary" 
+            variant="primary"
+            disabled={!selectedConnector || connectors.filter(c => c.active).length === 0}
           >
-            Create Image
+            {!selectedConnector || connectors.filter(c => c.active).length === 0 
+              ? <span title="You need an active cloud connector to create an image">Create Image</span>
+              : "Create Image"
+            }
           </Button>
         </div>
       </Form>
