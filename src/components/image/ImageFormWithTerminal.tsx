@@ -1,4 +1,17 @@
 // src/components/image/ImageFormWithTerminal.tsx
+/**
+ * Image Form With Interactive Terminal
+ * 
+ * This component provides a multi-step form for creating VM images:
+ * 1. Configuration step: Basic image details, machine specs, and cloud provider
+ * 2. Terminal step: Simulates image creation and allows interactive customization
+ * 
+ * Features:
+ * - Form validation for required fields
+ * - Simulated image creation process
+ * - Interactive terminal for custom environment setup
+ * - Detection of customizations for improved description
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -10,7 +23,8 @@ import Label from "@/components/form/Label";
 import Toggle from "@/components/form/input/Toggle";
 import Button from "@/components/ui/button/Button";
 import Select from "@/components/form/Select";
-import { useDynamicTerminal } from "@/hooks/useXterm";
+import InteractiveTerminal from '@/components/terminal/InteractiveTerminal';
+import FallbackTerminal from '@/components/terminal/FallbackTerminal';
 
 // Define the shape of the data being submitted
 export interface ImageFormData {
@@ -32,13 +46,16 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
   const router = useRouter();
   const [active, setActive] = useState(true);
 
-  // Use dynamic terminal hook
-  const { Terminal, FallbackTerminal, loading: terminalLoading, error: terminalError } = useDynamicTerminal();
+  // State for terminal components
+  const [terminalLoading, setTerminalLoading] = useState(true);
+  const [terminalError, setTerminalError] = useState<Error | null>(null);
+  const [Terminal, setTerminal] = useState<React.ComponentType<any> | null>(null);
 
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(1);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
-  const [terminalCommandsCompleted, setTerminalCommandsCompleted] = useState(false);
+  const [simulationComplete, setSimulationComplete] = useState(false);
+  const [customizationsApplied, setCustomizationsApplied] = useState(false);
 
   // Convert machine types for select dropdown
   const machineOptions = machineTypes.map(machine => ({
@@ -62,6 +79,23 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
   const [description, setDescription] = useState("");
   const [name, setName] = useState("");
 
+  // Dynamically load the InteractiveTerminal component
+  useEffect(() => {
+    const loadTerminalComponent = async () => {
+      try {
+        const terminalModule = await import('@/components/terminal/InteractiveTerminal');
+        setTerminal(() => terminalModule.default);
+        setTerminalLoading(false);
+      } catch (err) {
+        console.error('Error loading interactive terminal component:', err);
+        setTerminalError(err instanceof Error ? err : new Error('Unknown error loading terminal'));
+        setTerminalLoading(false);
+      }
+    };
+
+    loadTerminalComponent();
+  }, []);
+
   // Handle machine selection change
   const handleMachineChange = (value: string) => {
     setSelectedMachine(value);
@@ -82,6 +116,20 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
     return connectors.find(c => c.name === selectedConnector);
   };
 
+  // Handle terminal commands when in interactive mode
+  const handleTerminalCommand = (command: string) => {
+    // If a custom command changes the environment, we mark it as customized
+    if (command.trim() !== '' && 
+       (command.includes('apt-get') || 
+        command.includes('npm') || 
+        command.includes('pip') || 
+        command.includes('curl') || 
+        command.includes('wget') ||
+        command.includes('install'))) {
+      setCustomizationsApplied(true);
+    }
+  };
+
   // Function to simulate command execution in the terminal
   const simulateTerminalCommands = async () => {
     const selectedConnector = getSelectedConnectorObject();
@@ -89,7 +137,8 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
     
     // Clear previous logs
     setTerminalLogs([]);
-    setTerminalCommandsCompleted(false);
+    setSimulationComplete(false);
+    setCustomizationsApplied(false);
     
     // Initial setup
     setTerminalLogs(prev => [...prev, `Welcome to Cloud IDE Image Builder`]);
@@ -171,12 +220,22 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
     await new Promise(resolve => setTimeout(resolve, 1200));
     setTerminalLogs(prev => [...prev, `[SUCCESS] Image configuration completed successfully!`]);
     await new Promise(resolve => setTimeout(resolve, 800));
-    setTerminalLogs(prev => [...prev, `[INFO] Image "${name}" is ready to be created`]);
+    setTerminalLogs(prev => [...prev, `[INFO] Image "${name}" is ready for customization`]);
     await new Promise(resolve => setTimeout(resolve, 600));
-    setTerminalLogs(prev => [...prev, `[INFO] Click 'Create Image' to finalize and save to your ${selectedConnector?.name || 'cloud'} account`]);
     
-    // Mark commands as completed
-    setTerminalCommandsCompleted(true);
+    // Add interactive mode instructions with more emphasis
+    setTerminalLogs(prev => [...prev, ``]);
+    setTerminalLogs(prev => [...prev, `\x1b[1;32m[INTERACTIVE MODE ENABLED]\x1b[0m`]);
+    setTerminalLogs(prev => [...prev, `You can now use this terminal to customize your image before finalizing it.`]);
+    setTerminalLogs(prev => [...prev, `Try these commands:`]);
+    setTerminalLogs(prev => [...prev, `  • \x1b[33mapt-get install <package>\x1b[0m - Install system packages`]);
+    setTerminalLogs(prev => [...prev, `  • \x1b[33mnpm install <package>\x1b[0m    - Install Node.js packages`]);
+    setTerminalLogs(prev => [...prev, `  • \x1b[33mpip install <package>\x1b[0m    - Install Python packages`]);
+    setTerminalLogs(prev => [...prev, `  • \x1b[33mhelp\x1b[0m                     - See all available commands`]);
+    setTerminalLogs(prev => [...prev, ``]);
+    
+    // Mark simulation as complete to enable interactive input
+    setSimulationComplete(true);
   };
 
   // This will be called after validating the form on step 1
@@ -203,7 +262,9 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
     // Create new image object using state values
     const newImage: ImageFormData = {
       name: name,
-      description: description,
+      description: customizationsApplied 
+        ? `${description || 'Custom image'} (with terminal customizations)` 
+        : description,
       machine: getSelectedMachineObject(),
       active: active,
       cloudConnector: getSelectedConnectorObject()
@@ -255,7 +316,6 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
                 placeholder="e.g., Ubuntu Developer"
                 defaultValue={name}
                 onChange={(e) => setName(e.target.value)}
-                required
               />
             </div>
 
@@ -438,9 +498,33 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
             ) : terminalError || !Terminal ? (
               <FallbackTerminal logs={terminalLogs} />
             ) : (
-              <Terminal logs={terminalLogs} />
+              <Terminal 
+                logs={terminalLogs} 
+                simulationComplete={simulationComplete}
+                onCommand={handleTerminalCommand}
+                allowInput={true}
+              />
             )}
           </div>
+
+          {/* Additional Info */}
+          {simulationComplete && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/30 dark:text-blue-300">
+              <h3 className="font-medium text-blue-900 dark:text-blue-200 mb-2">Interactive Mode</h3>
+              <p className="text-sm">
+                You can now use the terminal to customize your image environment before finalizing it.
+                Try commands like <code className="bg-blue-100 dark:bg-blue-800/30 px-1 rounded">apt-get install</code>, <code className="bg-blue-100 dark:bg-blue-800/30 px-1 rounded">npm install</code>, or <code className="bg-blue-100 dark:bg-blue-800/30 px-1 rounded">pip install</code> to add packages.
+              </p>
+              <p className="text-sm mt-2">
+                Type <code className="bg-blue-100 dark:bg-blue-800/30 px-1 rounded">help</code> to see available commands or <code className="bg-blue-100 dark:bg-blue-800/30 px-1 rounded">exit</code> to disable terminal input.
+              </p>
+              {customizationsApplied && (
+                <p className="text-sm mt-2 font-medium text-blue-900 dark:text-blue-200">
+                  ✓ Custom environment modifications detected
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-8">
@@ -451,9 +535,9 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit,
               size="sm" 
               variant="primary"
               onClick={handleFinalSubmit}
-              disabled={!terminalCommandsCompleted}
+              disabled={!simulationComplete}
             >
-              Create Image
+              {customizationsApplied ? "Create Custom Image" : "Create Image"}
             </Button>
           </div>
         </div>
