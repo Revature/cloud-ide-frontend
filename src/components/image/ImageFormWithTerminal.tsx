@@ -1,26 +1,16 @@
 // src/components/image/ImageFormWithTerminal.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DynamicTerminal } from "@/hooks/useXterm";
-
-// Define your machine type interface
-interface Machine {
-  identifier: string;
-  name: string;
-  cpu_count: number;
-  memory_size: number;
-  storage_size: number;
-}
-
-// Define your cloud connector interface
-interface CloudConnector {
-  name: string;
-  image: string;
-  region: string;
-  type: string;
-  active: boolean;
-}
+import { useImages, machineTypes, Machine } from "@/context/ImagesContext";
+import { useCloudConnectors, CloudConnector } from "@/context/CloudConnectorsContext";
+import Form from "@/components/form/Form";
+import Input from "@/components/form/input/InputField";
+import Label from "@/components/form/Label";
+import Toggle from "@/components/form/input/Toggle";
+import Button from "@/components/ui/button/Button";
+import Select from "@/components/form/Select";
+import { useDynamicTerminal } from "@/hooks/useXterm";
 
 // Define the shape of the data being submitted
 export interface ImageFormData {
@@ -34,45 +24,62 @@ export interface ImageFormData {
 interface ImageFormWithTerminalProps {
   onSubmit?: (data: ImageFormData) => void;
   onCancel: () => void;
-  machineTypes: Machine[];
-  cloudConnectors: CloudConnector[];
-  addImage: (image: ImageFormData) => void;
 }
 
-const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ 
-  onSubmit, 
-  onCancel, 
-  machineTypes, 
-  cloudConnectors, 
-  addImage 
-}) => {
+const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({ onSubmit, onCancel }) => {
+  const { addImage } = useImages();
+  const { connectors } = useCloudConnectors();
   const router = useRouter();
   const [active, setActive] = useState(true);
+
+  // Use dynamic terminal hook
+  const { Terminal, FallbackTerminal, loading: terminalLoading, error: terminalError } = useDynamicTerminal();
 
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(1);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [terminalCommandsCompleted, setTerminalCommandsCompleted] = useState(false);
 
-  // Form data state
-  const [selectedMachine, setSelectedMachine] = useState(
-    machineTypes.length > 0 ? machineTypes[1].identifier : ""
-  );
+  // Convert machine types for select dropdown
+  const machineOptions = machineTypes.map(machine => ({
+    value: machine.identifier,
+    label: `${machine.name} (${machine.cpu_count} CPU, ${machine.memory_size} GB RAM, ${machine.storage_size} GB Storage)`
+  }));
+
+  // Create options for cloud connectors dropdown
+  const cloudConnectorOptions = connectors
+    .filter(connector => connector.active)
+    .map(connector => ({
+      value: connector.name,
+      label: `${connector.name} (${connector.region})`
+    }));
+
+  // State for form data with default values
+  const [selectedMachine, setSelectedMachine] = useState(machineTypes[1].identifier); // Default to Medium
   const [selectedConnector, setSelectedConnector] = useState(
-    cloudConnectors.filter(c => c.active).length > 0 
-      ? cloudConnectors.filter(c => c.active)[0].name 
-      : ""
+    connectors.length > 0 && connectors[0].active ? connectors[0].name : ""
   );
   const [description, setDescription] = useState("");
   const [name, setName] = useState("");
 
-  // Helper functions to get selected objects
-  const getSelectedMachineObject = (): Machine => {
-    return machineTypes.find(m => m.identifier === selectedMachine) || machineTypes[0];
+  // Handle machine selection change
+  const handleMachineChange = (value: string) => {
+    setSelectedMachine(value);
   };
 
+  // Handle cloud connector selection change
+  const handleConnectorChange = (value: string) => {
+    setSelectedConnector(value);
+  };
+
+  // Get the selected machine object
+  const getSelectedMachineObject = (): Machine => {
+    return machineTypes.find(m => m.identifier === selectedMachine) || machineTypes[1];
+  };
+
+  // Get the selected cloud connector object
   const getSelectedConnectorObject = (): CloudConnector | undefined => {
-    return cloudConnectors.find(c => c.name === selectedConnector);
+    return connectors.find(c => c.name === selectedConnector);
   };
 
   // Function to simulate command execution in the terminal
@@ -177,7 +184,7 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
     e.preventDefault();
     
     // Validate form data
-    if (!name || (!selectedConnector && cloudConnectors.filter(c => c.active).length > 0)) {
+    if (!name || (!selectedConnector && connectors.filter(c => c.active).length > 0)) {
       alert("Please fill in all required fields");
       return;
     }
@@ -224,24 +231,10 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
   // Get the current machine details for display
   const currentMachine = getSelectedMachineObject();
 
-  // Create options for select components
-  const machineOptions = machineTypes.map(machine => ({
-    value: machine.identifier,
-    label: `${machine.name} (${machine.cpu_count} CPU, ${machine.memory_size} GB RAM, ${machine.storage_size} GB Storage)`
-  }));
-
-  // Create options for cloud connectors dropdown
-  const cloudConnectorOptions = cloudConnectors
-    .filter(connector => connector.active)
-    .map(connector => ({
-      value: connector.name,
-      label: `${connector.name} (${connector.region})`
-    }));
-
   return (
     <div className="container mx-auto">
       {currentStep === 1 && (
-        <form onSubmit={handleContinueToTerminal}>
+        <Form onSubmit={handleContinueToTerminal}>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Basic Information Section */}
             <div className="col-span-full mb-4">
@@ -255,45 +248,31 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
 
             {/* Image Name */}
             <div className="col-span-full md:col-span-1">
-              <label htmlFor="name" className="mb-2.5 block font-medium text-black dark:text-white">
-                Image Name
-              </label>
-              <input
+              <Label htmlFor="name">Image Name</Label>
+              <Input
                 id="name"
                 name="name"
-                type="text"
                 placeholder="e.g., Ubuntu Developer"
-                value={name}
+                defaultValue={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full rounded-lg border border-stroke bg-transparent py-4 pl-6 pr-10 outline-none focus:border-primary focus-visible:shadow-none dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
               />
             </div>
 
             {/* Cloud Provider */}
             <div className="col-span-full md:col-span-1">
-              <label htmlFor="cloudConnector" className="mb-2.5 block font-medium text-black dark:text-white">
-                Cloud Provider
-              </label>
-              {cloudConnectors.filter(c => c.active).length > 0 ? (
-                <select
-                  className="w-full rounded-lg border border-stroke bg-transparent py-4 pl-6 pr-10 outline-none focus:border-primary focus-visible:shadow-none dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-                  value={selectedConnector}
-                  onChange={(e) => setSelectedConnector(e.target.value)}
-                  required
-                >
-                  <option value="">Select Cloud Provider</option>
-                  {cloudConnectorOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+              <Label htmlFor="cloudConnector">Cloud Provider</Label>
+              {connectors.filter(c => c.active).length > 0 ? (
+                <Select
+                  options={cloudConnectorOptions}
+                  defaultValue={selectedConnector}
+                  onChange={handleConnectorChange}
+                />
               ) : (
-                <div className="flex items-center h-[54px] px-4 border rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600">
+                <div className="flex items-center h-[42px] px-4 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
                   <p className="text-gray-500 dark:text-gray-400 text-sm">
                     No active cloud connectors available. 
-                    <a href="/cloud-connectors" className="text-primary ml-1 hover:underline">
+                    <a href="/cloud-connectors" className="text-brand-500 ml-1 hover:underline">
                       Add a connector
                     </a>
                   </p>
@@ -303,53 +282,35 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
 
             {/* Machine Type */}
             <div className="col-span-full md:col-span-1">
-              <label htmlFor="machine" className="mb-2.5 block font-medium text-black dark:text-white">
-                Machine Type
-              </label>
-              <select
-                className="w-full rounded-lg border border-stroke bg-transparent py-4 pl-6 pr-10 outline-none focus:border-primary focus-visible:shadow-none dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-                value={selectedMachine}
-                onChange={(e) => setSelectedMachine(e.target.value)}
-              >
-                {machineOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <Label htmlFor="machine">Machine Type</Label>
+              <Select
+                options={machineOptions}
+                defaultValue={selectedMachine}
+                onChange={handleMachineChange}
+              />
             </div>
 
             {/* Active/Inactive Toggle */}
             <div className="col-span-full md:col-span-1">
-              <label className="mb-2.5 block font-medium text-black dark:text-white">Status</label>
+              <Label>Status</Label>
               <div className="flex items-center gap-3 mt-2">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={() => setActive(!active)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-                  <span className="ml-3 text-sm font-medium">
-                    {active ? "Active" : "Inactive"}
-                  </span>
-                </label>
+                <Toggle enabled={active} setEnabled={setActive} />
+                <Label className="mb-0">
+                  {active ? "Active" : "Inactive"}
+                </Label>
               </div>
             </div>
 
             {/* Description */}
             <div className="col-span-full">
-              <label htmlFor="description" className="mb-2.5 block font-medium text-black dark:text-white">
-                Description
-              </label>
+              <Label htmlFor="description">Description</Label>
               <textarea
                 id="description"
                 name="description"
                 placeholder="Description of the image and its purpose"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-lg border border-stroke bg-transparent py-4 pl-6 pr-10 outline-none focus:border-primary focus-visible:shadow-none dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary h-24"
+                className="dark:bg-dark-900 h-24 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 px-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
               />
             </div>
 
@@ -362,7 +323,7 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
                 <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Details of the selected cloud provider
                 </div>
-                <div className="mt-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <div className="mt-4 p-4 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                   {getSelectedConnectorObject() && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -415,7 +376,7 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
             </div>
 
             {/* Machine Details */}
-            <div className="col-span-full p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="col-span-full p-4 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">CPU</p>
@@ -439,25 +400,22 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
 
           {/* Form Actions */}
           <div className="flex justify-end gap-3 mt-8">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex justify-center rounded border border-stroke py-2 px-6 font-medium text-black hover:shadow-1 dark:border-strokedark dark:text-white"
-            >
+            <Button size="sm" variant="outline" onClick={onCancel}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button 
+              size="sm" 
+              variant="primary"
               type="submit"
-              disabled={!selectedConnector || cloudConnectors.filter(c => c.active).length === 0 || !name}
-              className="flex justify-center rounded bg-primary py-2 px-6 font-medium text-gray hover:shadow-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedConnector || connectors.filter(c => c.active).length === 0 || !name}
             >
-              {!selectedConnector || cloudConnectors.filter(c => c.active).length === 0 
+              {!selectedConnector || connectors.filter(c => c.active).length === 0 
                 ? <span title="You need an active cloud connector to create an image">Continue</span>
                 : "Continue"
               }
-            </button>
+            </Button>
           </div>
-        </form>
+        </Form>
       )}
 
       {currentStep === 2 && (
@@ -473,26 +431,30 @@ const ImageFormWithTerminal: React.FC<ImageFormWithTerminalProps> = ({
 
           {/* Terminal Component */}
           <div className="border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-900 text-white p-1 font-mono terminal-shadow">
-            <DynamicTerminal logs={terminalLogs} />
+            {terminalLoading ? (
+              <div className="h-96 w-full rounded-lg bg-gray-800 p-4 font-mono text-gray-300 animate-pulse">
+                Loading terminal...
+              </div>
+            ) : terminalError || !Terminal ? (
+              <FallbackTerminal logs={terminalLogs} />
+            ) : (
+              <Terminal logs={terminalLogs} />
+            )}
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-8">
-            <button
-              type="button"
-              onClick={handleBackToForm}
-              className="flex justify-center rounded border border-stroke py-2 px-6 font-medium text-black hover:shadow-1 dark:border-strokedark dark:text-white"
-            >
+            <Button size="sm" variant="outline" onClick={handleBackToForm}>
               Back
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button 
+              size="sm" 
+              variant="primary"
               onClick={handleFinalSubmit}
               disabled={!terminalCommandsCompleted}
-              className="flex justify-center rounded bg-primary py-2 px-6 font-medium text-gray hover:shadow-1 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Image
-            </button>
+            </Button>
           </div>
         </div>
       )}

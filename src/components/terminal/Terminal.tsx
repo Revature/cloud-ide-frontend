@@ -1,7 +1,7 @@
 // src/components/terminal/Terminal.tsx
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
-import useXtermModules from '@/hooks/useXterm';
+import { useXtermModules } from '@/hooks/useXterm';
 import FallbackTerminal from './FallbackTerminal';
 
 interface TerminalProps {

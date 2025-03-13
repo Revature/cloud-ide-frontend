@@ -1,21 +1,40 @@
-// src/hooks/useXterm.ts
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 
-// Dynamic import for the Terminal component
-export const DynamicTerminal = dynamic(
-  () => import('@/components/terminal/Terminal'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-96 w-full rounded-lg overflow-auto bg-gray-900 p-4 font-mono text-sm text-white">
-        Loading terminal...
-      </div>
-    )
-  }
-);
+// Dynamic import with proper error handling
+export const useDynamicTerminal = () => {
+  const [Terminal, setTerminal] = useState<React.ComponentType<{logs: string[]}> | null>(null);
+  const [FallbackTerminal, setFallbackTerminal] = useState<React.ComponentType<{logs: string[]}> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-// Load XTerm modules
+  useEffect(() => {
+    const loadTerminalComponents = async () => {
+      try {
+        const terminalModule = await import('@/components/terminal/Terminal');
+        const fallbackModule = await import('@/components/terminal/FallbackTerminal');
+        
+        setTerminal(() => terminalModule.default);
+        setFallbackTerminal(() => fallbackModule.default);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading terminal components:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error loading terminal'));
+        setLoading(false);
+      }
+    };
+
+    loadTerminalComponents();
+  }, []);
+
+  return { 
+    Terminal, 
+    FallbackTerminal, 
+    loading, 
+    error 
+  };
+};
+
+// XTerm modules loading
 export const useXtermModules = () => {
   const [modules, setModules] = useState<{
     xterm: any | null;
@@ -35,7 +54,7 @@ export const useXtermModules = () => {
 
     const loadModules = async () => {
       try {
-        // Load modules
+        // Load XTerm modules dynamically
         const xtermModule = await import('@xterm/xterm');
         const fitAddonModule = await import('@xterm/addon-fit');
         const webLinksAddonModule = await import('@xterm/addon-web-links');
