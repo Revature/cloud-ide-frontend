@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { CloudConnectorsProvider } from "@/context/CloudConnectorsContext";
 import { ImagesProvider } from "@/context/ImagesContext";
+import { RunnersProvider } from "@/context/RunnersContext";
 
 const outfit = Outfit({
   variable: "--font-outfit-sans",
@@ -25,7 +26,9 @@ export default function RootLayout({
           <SidebarProvider>
             <CloudConnectorsProvider>
               <ImagesProvider>
-                {children}
+                <RunnersProvider>
+                  {children}
+                </RunnersProvider>
               </ImagesProvider>
             </CloudConnectorsProvider>
           </SidebarProvider>
